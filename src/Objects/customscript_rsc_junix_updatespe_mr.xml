@@ -1,0 +1,17 @@
+<mapreducescript scriptid="customscript_rsc_junix_updatespe_mr">
+    <isinactive>F</isinactive>
+    <name>RSC - JUNIX Update SPE</name>
+    <notifyowner>T</notifyowner>
+    <scriptfile>[/SuiteScripts/JunixCadastro/rsc_junix_updatespe_mr.js]</scriptfile>
+    <scriptdeployments>
+        <scriptdeployment scriptid="customdeploy_rsc_junix_updatespe_mr">
+            <isdeployed>T</isdeployed>
+            <loglevel>ERROR</loglevel>
+            <runasrole></runasrole>
+            <status>NOTSCHEDULED</status>
+            <yieldaftermins>60</yieldaftermins>
+            <title>RSC - JUNIX Update SPE</title>
+        </scriptdeployment>
+    </scriptdeployments>
+</mapreducescript>
+

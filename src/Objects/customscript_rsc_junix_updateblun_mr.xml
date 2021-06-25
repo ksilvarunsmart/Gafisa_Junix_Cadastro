@@ -1,0 +1,16 @@
+<mapreducescript scriptid="customscript_rsc_junix_updateblun_mr">
+    <isinactive>F</isinactive>
+    <name>RSC - JUNIX Update Bloco Unidade</name>
+    <notifyowner>T</notifyowner>
+    <scriptfile>[/SuiteScripts/JunixCadastro/rsc_junix_updateblun_mr.js]</scriptfile>
+    <scriptdeployments>
+        <scriptdeployment scriptid="customdeploy_rsc_junix_updateblun_mr">
+            <isdeployed>T</isdeployed>
+            <loglevel>ERROR</loglevel>
+            <runasrole></runasrole>
+            <status>NOTSCHEDULED</status>
+            <yieldaftermins>60</yieldaftermins>
+            <title>RSC - JUNIX Update Empreendimento</title>
+        </scriptdeployment>
+    </scriptdeployments>
+</mapreducescript>
