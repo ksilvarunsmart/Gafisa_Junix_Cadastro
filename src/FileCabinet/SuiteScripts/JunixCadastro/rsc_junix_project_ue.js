@@ -29,11 +29,16 @@ define(['N/search'],
          * @since 2015.2
          */
         const beforeSubmit = (context) => {
+            log.audit({title: 'Context Value', details: context.oldRecord});
             /*Valida apenas se permanece o valor do campo igual. */
-            if (context.oldRecord.getValue('custentity_rsc_atualizadocontrato_junix') == context.newRecord.getValue('custentity_rsc_atualizadocontrato_junix')){
-                if (context.type !== context.UserEventType.DELETE){
-                    context.newRecord.setValue('custentity_rsc_atualizadocontrato_junix', false);
+            if (context.oldRecord){
+                if (context.oldRecord.getValue('custentity_rsc_atualizadocontrato_junix') == context.newRecord.getValue('custentity_rsc_atualizadocontrato_junix')){
+                    if (context.type !== context.UserEventType.DELETE){
+                        context.newRecord.setValue('custentity_rsc_atualizadocontrato_junix', false);
+                    }
                 }
+            } else {
+                context.newRecord.setValue('custentity_rsc_atualizadocontrato_junix', false);
             }
         }
 
