@@ -1,0 +1,17 @@
+<mapreducescript scriptid="customscript_rsc_junix_createfeedprop_mr">
+    <isinactive>F</isinactive>
+    <name>RSC - JUNIX Create Feed Proposta</name>
+    <notifyowner>T</notifyowner>
+    <scriptfile>[/SuiteScripts/JunixCadastro/rsc_junix_createfeedprop_mr.js]</scriptfile>
+    <scriptdeployments>
+        <scriptdeployment scriptid="customdeploy_rsc_junix_createfeedprop_mr">
+            <isdeployed>T</isdeployed>
+            <loglevel>DEBUG</loglevel>
+            <runasrole></runasrole>
+            <status>NOTSCHEDULED</status>
+            <yieldaftermins>60</yieldaftermins>
+            <title>RSC - JUNIX Create Feed Proposta</title>
+        </scriptdeployment>
+    </scriptdeployments>
+</mapreducescript>
+
