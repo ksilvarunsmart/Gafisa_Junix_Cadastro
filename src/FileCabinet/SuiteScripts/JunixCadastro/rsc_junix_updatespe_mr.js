@@ -81,26 +81,28 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
                 });
 
                 let address = subsidiary.getSubrecord({ fieldId: 'mainaddress' })
-
-
+                //log.audit({title: 'address', details: address});
+                var cidade = record.load({ type: 'customrecord_enl_cities', id:address.getValue('custrecord_enl_city') });
+                log.audit({title: 'Cidade', details: cidade});
+                //var estado = search.create({ type: 'customrecord_enl_cities', id:address.getValue('custrecord_enl_city') });
                 /* Validar se a spe é já é um projeto */
                 var body = {
-                    codigo: subsidiary.getValue('custrecord_avlr_tco_companycode'),
-                    Cnpj: subsidiary.getValue('federalidnumber'),
+                    codigo: subsidiary.getValue('name').substr(0,4),
+                    CNPJ: subsidiary.getValue('federalidnumber'),
                     razaoSocial: subsidiary.getValue('legalname'),
                     nomeFantasia: subsidiary.getValue('name'),
                     Nire: subsidiary.getValue(''),
                     Cep: address.getValue('zip'),
                     endereco: address.getValue('addr1'),
-                    Bairro: address.getValue('addr'),
-                    Cidade: address.getValue('city'),
+                    Bairro: address.getValue('addr3'),
+                    Cidade: cidade.getValue('name'),
                     Estado: address.getValue('state'),
-                    Numero: address.getValue(''),
-                    Complemento: address.getValue('')
+                    Numero: address.getValue('custrecord_enl_numero'),
+                    Complemento: address.getValue('addr2')
                 }
                 log.debug({title: 'Body', details: body})
 
-                var retorno = JSON.parse(api.sendRequest(body, 'SPE/Salvar'));
+                var retorno = JSON.parse(api.sendRequest(body, 'SPE_JUNIX/1.0/'));
                 log.debug({title: "retorno", details: retorno});
                 if (retorno.OK){
                     log.debug({title: "Retornou Ok.", details: "Retornou o ID " + retorno.Dados});

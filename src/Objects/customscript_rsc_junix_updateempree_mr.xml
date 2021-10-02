@@ -1,16 +1,30 @@
 <mapreducescript scriptid="customscript_rsc_junix_updateempree_mr">
-    <isinactive>F</isinactive>
-    <name>RSC - JUNIX Update Empreendimento</name>
-    <notifyowner>T</notifyowner>
-    <scriptfile>[/SuiteScripts/JunixCadastro/rsc_junix_updateempree_mr.js]</scriptfile>
-    <scriptdeployments>
-        <scriptdeployment scriptid="customdeploy_rsc_junix_updateempree_mr">
-            <isdeployed>T</isdeployed>
-            <loglevel>ERROR</loglevel>
-            <runasrole></runasrole>
-            <status>NOTSCHEDULED</status>
-            <yieldaftermins>60</yieldaftermins>
-            <title>RSC - JUNIX Update Empreendimento</title>
-        </scriptdeployment>
-    </scriptdeployments>
+  <description></description>
+  <isinactive>F</isinactive>
+  <name>RSC - JUNIX Update Empreendimento</name>
+  <notifyadmins>F</notifyadmins>
+  <notifyemails></notifyemails>
+  <notifyowner>T</notifyowner>
+  <scriptfile>[/SuiteScripts/JunixCadastro/rsc_junix_updateempree_mr.js]</scriptfile>
+  <scriptdeployments>
+    <scriptdeployment scriptid="customdeploy_rsc_junix_updateempree_mr">
+      <buffersize>1</buffersize>
+      <concurrencylimit>1</concurrencylimit>
+      <isdeployed>T</isdeployed>
+      <loglevel>ERROR</loglevel>
+      <queueallstagesatonce>T</queueallstagesatonce>
+      <runasrole>ADMINISTRATOR</runasrole>
+      <status>NOTSCHEDULED</status>
+      <title>RSC - JUNIX Update Empreendimento</title>
+      <yieldaftermins>60</yieldaftermins>
+      <recurrence>
+        <daily>
+          <everyxdays>1</everyxdays>
+          <repeat>PT15M</repeat>
+          <startdate>2021-07-01</startdate>
+          <starttime>03:00:00Z</starttime>
+        </daily>
+      </recurrence>
+    </scriptdeployment>
+  </scriptdeployments>
 </mapreducescript>

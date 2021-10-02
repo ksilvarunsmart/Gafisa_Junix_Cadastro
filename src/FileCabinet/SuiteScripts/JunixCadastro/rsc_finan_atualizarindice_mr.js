@@ -2,11 +2,20 @@
  * @NApiVersion 2.1
  * @NScriptType MapReduceScript
  */
-define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
+define(['N/query', 'N/record', 'N/runtime'],
     /**
- * @param{search} search
+ * @param{query} query
+ * @param{record} record
  */
-    (search, runtime, record, api) => {
+    (query, record, runtime) => {
+        function tratarData(data) {
+            var dataCadastro = data.split('T');
+            var dateCadastro = dataCadastro[0].split('-');
+            var cadastroData = dateCadastro[2] + '/' + dateCadastro[1] + '/' + dateCadastro[0];
+            cadastroData = cadastroData.replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$2/$1/$3");
+            cadastroData = new Date(cadastroData);
+            return cadastroData;
+        }
         /**
          * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
          * @param {Object} inputContext
@@ -19,43 +28,33 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          * @returns {Array|Object|Search|ObjectRef|File|Query} The input data to use in the map/reduce process
          * @since 2015.2
          */
-
         const getInputData = (inputContext) => {
-            return search.create({
-                type: "job",
-                filters:
-                    [
-                        ["custentity_rsc_atualizadocontrato_junix","is","F"],
-                        "AND",
-                        ["custentity_rsc_junix_aprovado_envio","is","T"]
-                    ],
-                columns:
-                    [
-                        search.createColumn({
-                            name: "entityid",
-                            sort: search.Sort.ASC,
-                            label: "ID"
-                        }),
-                        search.createColumn({name: "companyname", label: "Name"}),
-                        search.createColumn({name: "email", label: "Email"}),
-                        search.createColumn({name: "phone", label: "Phone"}),
-                        search.createColumn({name: "altphone", label: "Office Phone"}),
-                        search.createColumn({name: "fax", label: "Fax"}),
-                        search.createColumn({name: "customer", label: "Customer"}),
-                        search.createColumn({name: "entitystatus", label: "Status"}),
-                        search.createColumn({name: "contact", label: "Primary Contact"}),
-                        search.createColumn({name: "jobtype", label: "Project Type"}),
-                        search.createColumn({name: "startdate", label: "Start Date"}),
-                        search.createColumn({name: "projectedenddate", label: "Projected End Date"}),
-                        search.createColumn({name: "altemail", label: "Alt. Email"}),
-                        search.createColumn({name: "subsidiary", label: "Subsidiary"}),
-                        search.createColumn({name: "custentity_lrc_matricula", label: "Matrícula"}),
-                        search.createColumn({name: "custentity_project_type_np", label: "Project Type"}),
-                        search.createColumn({name: "custentity_rsc_project_date_habite", label:"Data Habite"}),
-                        search.createColumn({name: "custentity_rsc_inicio_venda", label:"Inicio Venda"})
-                    ]
+            arrResults = [];
+
+            var objIterator = query.runSuiteQLPaged({
+                query:  "select b1.id idFatura, b1.custbody_lrc_fatura_principal faturaprincipal, " +
+                    "b1.custbody_rsc_projeto_obra_gasto_compra projetoobra, item itematualizacao, quantity qtdfator, " +
+                    "c.custbody_rsc_finan_indice_base_cont basecalculo, a.id unidadeCorrecao from customrecord_rsc_correction_unit a,\n" +
+                    "transactionline b\n" +
+                    "join transaction b1 on b1.id = b.transaction \n" +
+                    "join transaction c on b1.custbody_lrc_fatura_principal = c.id\n" +
+                    "where  a.name = 'INCP' and custrecord_rsc_ucr_calc_base_item = item\n" +
+                    "and c.custbody_rsc_status_contrato = '2' and b1.custbodyrsc_tpparc > 2 and 39412 = b1.custbody_lrc_fatura_principal"
+            }).iterator();
+            objIterator.each(function(page) {
+                var objPage = page.value.data.iterator();
+
+                objPage.each(function(row) {
+
+                    arrResults.push(row.value.asMap());
+                    return true;
+                });
+
+                return true;
             });
 
+            log.audit({title: 'Total de registros', details: arrResults.length})
+            return arrResults;
         }
 
         /**
@@ -74,78 +73,74 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          * @param {string} mapContext.value - Value to be processed during the map stage
          * @since 2015.2
          */
-
         const map = (mapContext) => {
             try {
 
 
-            log.debug({title:'Map', details: mapContext});
-            var searchResult = JSON.parse(mapContext.value);
+            /* Recuperar a taxa a ser calculada */
+            log.debug({title:'mapContext', details: mapContext})
+            let objContext = mapContext.value;
+            log.debug({title: 'Context', details: objContext});
+            let installmentContext = JSON.parse(objContext);
+            log.debug({title: 'Context', details: installmentContext});
 
-            internalid = searchResult.id;
-            log.debug({title:'Id', details: internalid});
-
-            log.debug({title: 'subsidiary', details:searchResult.values['subsidiary'] })
-            /* recuperar os dados */
-            var subsidiary = record.load({
-                type: record.Type.SUBSIDIARY,
-                id: searchResult.values['subsidiary'].value,
-                isDynamic: false,
-            });
-
-            let address = subsidiary.getSubrecord({ fieldId: 'mainaddress' });
-            var cidade = record.load({ type: 'customrecord_enl_cities', id:address.getValue('custrecord_enl_city') });
-            log.audit({title: 'Cidade', details: cidade});
-            var codProject = subsidiary.getValue('name').substr(0,4) + '_' + subsidiary.getValue('name').substr(0,4);
-            /* montar o body do request */
-            var body = {
-                Codigo: codProject,
-                nome: searchResult.values['companyname'],
-                apelido: '',
-                dataHabitese: searchResult.values['custentity_rsc_project_date_habite'],
-                dataLancamento: searchResult.values['custentity_rsc_inicio_venda'],
-                dataEntregaEfetiva: searchResult.values['projectedenddate'],
-                dataInicioObra: searchResult.values['startdate'] ,
-                Cep: address.getValue('zip'),
-                endereco: address.getValue('addr1'),
-                Bairro: address.getValue('addr3'),
-                Cidade: cidade.getValue('name'),
-                Estado: address.getValue('state'),
-                Numero: address.getValue('custrecord_enl_numero'),
-                Complemento: address.getValue('addr2'),
-                statusObra: '',
-                codigoSPE: subsidiary.getValue('name').substr(0,4)
-            }
-            log.debug({title: 'body', details: body})
-
-
-            var retorno = JSON.parse(api.sendRequest(body, 'EMPREENDIMENTO_JUNIX/1.0/'));
-            log.debug({title: "retorno", details: retorno});
-            if (retorno.OK){
-                var job_update = record.load({
-                    type: record.Type.JOB,
-                    id: internalid,
-                    isDynamic: false,
-                });
-                log.debug({title: "Retornou Ok.", details: "Retornou o ID " + retorno.Dados});
-                job_update.setValue('custentity_rsc_atualizadocontrato_junix', true);
-                job_update.setValue('custentity_rsc_junix_id', retorno.Dados);
-                job_update.setValue('custentity_rsc_codigo_junix_obra', codProject);
-
-                job_update.save();
+            var effectiveDate =  runtime.getCurrentScript().getParameter({name:'custscript_rsc_effective_date'});
+            effectiveDate = '01/08/2021';
+            log.debug({title: 'parametro unidade', details: installmentContext.unidadecorrecao});
+            log.debug({title: 'parametro data', details: effectiveDate});
+            var queryResults = query.runSuiteQL({
+                query: 'select custrecord_rsc_hif_factor_percent from customrecord_rsc_factor_history\n' +
+                    'where custrecord_rsc_hif_effective_date = ?  and custrecord_rsc_hif_correction_unit = ? ',
+            params: [effectiveDate, installmentContext.unidadecorrecao]});
+            var results = queryResults.asMappedResults();
+            if (results.length <= 0){
+                throw 'Data Efetiva não Parametrizada';
             } else {
-                log.debug({title: "Retornou Erro .", details: "Mensagem Erro " + retorno.Mensagem});
+                var newFactor = 0;
+                for (let i = 0; i < results.length; i++) {
+                    var result = results[i];
+                    newFactor = result['custrecord_rsc_hif_factor_percent'];
+                }
             }
-            subsidiary.save({ignoreMandatoryFields: true});
 
-            var scriptObj = runtime.getCurrentScript();
-            log.debug({
-                title: "Remaining usage units: ",
-                details: scriptObj.getRemainingUsage()
-            });
-            } catch (e){
-                log.error({title : 'Erro ao processar', details: e.message()})
+            if (newFactor <= installmentContext.basecalculo){
+                /*Ignorar este calculo */
+                throw 'Fator Menor ou igual o Atual: ' + newFactor;
             }
+
+            var diffFactor = newFactor - installmentContext.basecalculo;
+            log.debug({title: 'Diferença de update', details:diffFactor});
+            log.debug({title: 'validação', details:'Check se deverá atualizar o fator'});
+
+            var installmentRecord = record.load({
+                type: 'customsale_rsc_financiamento',
+                id: installmentContext.idfatura,
+                isDynamic: false
+            });
+
+            var lines = installmentRecord.getLineCount({sublistId: 'item'});
+            for (let i = 0; i < lines; i++) {
+                var item = installmentRecord.getSublistValue({sublistId: 'item', line: i, fieldId:'item'});
+                log.debug({title: 'validação item', details:item});
+                if (item == installmentContext.itematualizacao){
+                    /* Obtem valor anterior*/
+                    var rateLast = installmentRecord.getSublistValue({sublistId: 'item', line: i, fieldId:'rate'});
+                    log.debug({title: 'validação rateLast', details:rateLast});
+                    if (rateLast < diffFactor){
+                        /* Atualizo com o novo Valor */
+                        log.debug({title: 'validação atualizou', details:diffFactor});
+                        installmentRecord.setSublistValue({sublistId:'item', line:i, fieldId:'rate',value: diffFactor});
+                        var qtd = installmentRecord.getSublistValue({sublistId:'item', line:i, fieldId:'quantity'});
+                        installmentRecord.setSublistValue({sublistId:'item', line:i, fieldId:'amount', value: diffFactor*qtd});
+                    }
+                }
+            }
+
+            installmentRecord.save({ignoreMandatoryFields: true});
+            } catch (e){
+                log.error({title: 'Error Processing', details: e});
+            }
+
         }
 
         /**

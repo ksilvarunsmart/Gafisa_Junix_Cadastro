@@ -2,9 +2,9 @@
  * @NApiVersion 2.1
  * @NScriptType MapReduceScript
  */
-define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
+define([],
     
-    (search, runtime, record, api) => {
+    () => {
         /**
          * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
          * @param {Object} inputContext
@@ -17,13 +17,9 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          * @returns {Array|Object|Search|ObjectRef|File|Query} The input data to use in the map/reduce process
          * @since 2015.2
          */
+
         const getInputData = (inputContext) => {
-                var body = {
-                        tipoFiltro: "NÃO PROCESSADOS"
-                }
-                var retorno = JSON.parse(api.sendRequest(body, 'PROPOSTA_PESQVENDA_JUNIX/1.0/'));
-                log.debug({title: 'Resultado', details: retorno.body});
-                return retorno;
+
         }
 
         /**
@@ -42,19 +38,43 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          * @param {string} mapContext.value - Value to be processed during the map stage
          * @since 2015.2
          */
+
         const map = (mapContext) => {
-                log.debug({title: 'Resultado', details: mapContext.value});
-                var proposta = JSON.parse(mapContext.value);
-                log.debug({title: 'Resultado', details: proposta.NumeroProposta});
-                var feed = record.create({
-                        type: 'customrecord_rsc_junix_feed_proposta',
-                        isDynamic: true
-                })
-                feed.setValue({fieldId: 'custrecord_rsc_numero_proposta', value: proposta.NumeroProposta});
-                feed.save({
-                        ignoreMandatoryFields: true
-                })
+                /*{
+                        "numeroContrato": "string",
+                    "dataCadastro": "2021-09-14T12:22:03.446Z",
+                    "saldoQuitacao": 0,
+                    "valorDevolucao": 0,
+                    "valorContrato": 0,
+                    "valorSaldoQuitacao": 0,
+                    "cnpJ_SPE": "string",
+                    "codigoEmpreendimento": "string",
+                    "codigoBloco": "string",
+                    "numeroUnidade": "string",
+                    "numeroProposta": "string",
+                    "statusUnidade": "string"
+                }*/
         }
+
+        /**
+         * Defines the function that is executed when the reduce entry point is triggered. This entry point is triggered
+         * automatically when the associated map stage is complete. This function is applied to each group in the provided context.
+         * @param {Object} reduceContext - Data collection containing the groups to process in the reduce stage. This parameter is
+         *     provided automatically based on the results of the map stage.
+         * @param {Iterator} reduceContext.errors - Serialized errors that were thrown during previous attempts to execute the
+         *     reduce function on the current group
+         * @param {number} reduceContext.executionNo - Number of times the reduce function has been executed on the current group
+         * @param {boolean} reduceContext.isRestarted - Indicates whether the current invocation of this function is the first
+         *     invocation (if true, the current invocation is not the first invocation and this function has been restarted)
+         * @param {string} reduceContext.key - Key to be processed during the reduce stage
+         * @param {List<String>} reduceContext.values - All values associated with a unique key that was passed to the reduce stage
+         *     for processing
+         * @since 2015.2
+         */
+        const reduce = (reduceContext) => {
+
+        }
+
 
         /**
          * Defines the function that is executed when the summarize entry point is triggered. This entry point is triggered
@@ -79,6 +99,6 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
 
         }
 
-        return {getInputData, map, summarize}
+        return {getInputData, map, reduce, summarize}
 
     });

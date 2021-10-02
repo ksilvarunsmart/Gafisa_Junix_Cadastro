@@ -1,0 +1,29 @@
+<customlist scriptid="customlist_rsc_lista_status_contrato">
+  <description>Lista de status do contrato Indicando em que fase a negociação/ se encontra:  1 Proposta / 2 Contrato / 3 Distrato / 4 Transferido</description>
+  <isinactive>F</isinactive>
+  <ismatrixoption>F</ismatrixoption>
+  <isordered>T</isordered>
+  <name>Status do Contrato</name>
+  <customvalues>
+    <customvalue scriptid="val_44671_5843489_185">
+      <abbreviation>P</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Proposta</value>
+    </customvalue>
+    <customvalue scriptid="val_44672_5843489_323">
+      <abbreviation>C</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Contrato</value>
+    </customvalue>
+    <customvalue scriptid="val_44673_5843489_524">
+      <abbreviation>D</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Distrato</value>
+    </customvalue>
+    <customvalue scriptid="val_168956_5843489_sb1_688">
+      <abbreviation>T</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Transferido</value>
+    </customvalue>
+  </customvalues>
+</customlist>

@@ -90,6 +90,12 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
                 qtd_blocos = retorno.length;
             }
 
+            if (qtd_blocos == 0){
+                /* Enviar os blocos */
+            } else {
+                /* Comparar a quantidade de blocos no netsuite */
+            }
+
             /* Retornar a quantidade de Unidade */
             var retorno = JSON.parse(api.sendRequest(body, 'unidade/PesquisarPorEmpreendimento'));
             log.debug({title: "retorno unidades", details: retorno});
@@ -106,6 +112,7 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
             job_update.setValue('custentity_rsc_qt_blocos', qtd_blocos);
             job_update.setValue('custentity_rsc_qt_unidades', qtd_unidades);
             job_update.save();
+
 
 
 

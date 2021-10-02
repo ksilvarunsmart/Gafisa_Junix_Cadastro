@@ -1,14 +1,14 @@
-<usereventscript scriptid="customscript_rsc_junix_project_ue">
+<usereventscript scriptid="customscript_rsc_finan_convertpropcontr">
   <description></description>
   <isinactive>F</isinactive>
-  <name>RSC - JUnix - Project (UE)</name>
+  <name>RSC - JUnix - Convert Lead To Contract</name>
   <notifyadmins>F</notifyadmins>
   <notifyemails></notifyemails>
   <notifyowner>T</notifyowner>
   <notifyuser>F</notifyuser>
-  <scriptfile>[/SuiteScripts/JunixCadastro/rsc_junix_project_ue.js]</scriptfile>
+  <scriptfile>[/SuiteScripts/JunixCadastro/rsc_finan_convertpropcontr.js]</scriptfile>
   <scriptdeployments>
-    <scriptdeployment scriptid="customdeploy_rsc_junix_project_ue">
+    <scriptdeployment scriptid="customdeploy_rsc_finan_convertpropcontr">
       <allemployees>F</allemployees>
       <alllocalizationcontexts>T</alllocalizationcontexts>
       <allpartners>F</allpartners>
@@ -17,8 +17,8 @@
       <eventtype></eventtype>
       <executioncontext>ACTION|ADVANCEDREVREC|BANKCONNECTIVITY|BANKSTATEMENTPARSER|BUNDLEINSTALLATION|CLIENT|CONSOLRATEADJUSTOR|CSVIMPORT|CUSTOMGLLINES|CUSTOMMASSUPDATE|DATASETBUILDER|DEBUGGER|EMAILCAPTURE|FICONNECTIVITY|FIPARSER|MAPREDUCE|OTHER|PAYMENTGATEWAY|PAYMENTPOSTBACK|PLATFORMEXTENSION|PORTLET|PROMOTIONS|RECORDACTION|RESTLET|RESTWEBSERVICES|SCHEDULED|SDFINSTALLATION|SHIPPINGPARTNERS|SUITELET|TAXCALCULATION|USEREVENT|USERINTERFACE|WEBSERVICES|WORKBOOKBUILDER|WORKFLOW</executioncontext>
       <isdeployed>T</isdeployed>
-      <loglevel>ERROR</loglevel>
-      <recordtype>JOB</recordtype>
+      <loglevel>DEBUG</loglevel>
+      <recordtype>INVOICE</recordtype>
       <runasrole></runasrole>
       <status>RELEASED</status>
     </scriptdeployment>

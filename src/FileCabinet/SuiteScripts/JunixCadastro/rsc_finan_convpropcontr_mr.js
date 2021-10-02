@@ -2,11 +2,11 @@
  * @NApiVersion 2.1
  * @NScriptType MapReduceScript
  */
-define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
+define(['N/query', 'N/runtime', 'N/record'],
     /**
- * @param{search} search
+ * @param{query} query
  */
-    (search, runtime, record, api) => {
+    (query, runtime, record) => {
         /**
          * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
          * @param {Object} inputContext
@@ -21,41 +21,30 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          */
 
         const getInputData = (inputContext) => {
-            return search.create({
-                type: "job",
-                filters:
-                    [
-                        ["custentity_rsc_atualizadocontrato_junix","is","F"],
-                        "AND",
-                        ["custentity_rsc_junix_aprovado_envio","is","T"]
-                    ],
-                columns:
-                    [
-                        search.createColumn({
-                            name: "entityid",
-                            sort: search.Sort.ASC,
-                            label: "ID"
-                        }),
-                        search.createColumn({name: "companyname", label: "Name"}),
-                        search.createColumn({name: "email", label: "Email"}),
-                        search.createColumn({name: "phone", label: "Phone"}),
-                        search.createColumn({name: "altphone", label: "Office Phone"}),
-                        search.createColumn({name: "fax", label: "Fax"}),
-                        search.createColumn({name: "customer", label: "Customer"}),
-                        search.createColumn({name: "entitystatus", label: "Status"}),
-                        search.createColumn({name: "contact", label: "Primary Contact"}),
-                        search.createColumn({name: "jobtype", label: "Project Type"}),
-                        search.createColumn({name: "startdate", label: "Start Date"}),
-                        search.createColumn({name: "projectedenddate", label: "Projected End Date"}),
-                        search.createColumn({name: "altemail", label: "Alt. Email"}),
-                        search.createColumn({name: "subsidiary", label: "Subsidiary"}),
-                        search.createColumn({name: "custentity_lrc_matricula", label: "Matrícula"}),
-                        search.createColumn({name: "custentity_project_type_np", label: "Project Type"}),
-                        search.createColumn({name: "custentity_rsc_project_date_habite", label:"Data Habite"}),
-                        search.createColumn({name: "custentity_rsc_inicio_venda", label:"Inicio Venda"})
-                    ]
-            });
-
+            var proposta = runtime.getCurrentScript().getParameter('proposta');
+            return query.runSuiteQL({
+                query: 'select a.id,\n' +
+                    '\tfaturaprincipal.custbody_rsc_finan_indice_base_cont,\n' +
+                    '\tfaturaprincipal. custbody_rsc_finan_dateativacontrato,\n' +
+                    '\tb.item,\n' +
+                    '\tb.foreignamount *-1 valor,\n' +
+                    '\tItemCorrecao.custrecord_rsc_isi_correction_unit,\n' +
+                    '\tItemCorrecao.custrecord_rsc_isi_item,\n' +
+                    'a.custbodyrsc_tpparc\n' +
+                    ' from transaction  a\n' +
+                    'join transaction faturaprincipal \n' +
+                    '\ton a.custbody_lrc_fatura_principal = faturaprincipal.id \n' +
+                    'join customrecord_rsc_installment_setup c \n' +
+                    '\ton a.custbody_rsc_projeto_obra_gasto_compra = c.custrecord_rsc_ist_project\n' +
+                    'join customrecord_rsc_installment_setup_item ItemPrincipal \n' +
+                    '\ton c.custrecord_rsc_unidade_correcao = ItemPrincipal.id and ItemPrincipal.custrecord_rsc_isi_main_item = \'T\'\n' +
+                    'join customrecord_rsc_installment_setup_item itemcorrecao \n' +
+                    '\ton c.id = itemcorrecao.CUSTRECORD_RSC_ISI_INSTALLMENT_SETUP and \n' +
+                    'c.CUSTRECORD_RSC_UNIDADE_CORRECAO = itemcorrecao.CUSTRECORD_RSC_ISI_CORRECTION_UNIT\n' +
+                    'join transactionline b on  a.id = b.transaction and b.item > 0 and b.item = ItemPrincipal.custrecord_rsc_isi_item\n' +
+                    'where a.custbody_lrc_fatura_principal = 21523'   ,
+                //params: [proposta]
+            }).asMappedResults();
         }
 
         /**
@@ -76,75 +65,35 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          */
 
         const map = (mapContext) => {
-            try {
+            try{
 
 
-            log.debug({title:'Map', details: mapContext});
-            var searchResult = JSON.parse(mapContext.value);
+                log.audit({title: 'Detail', details: mapContext})
+                var resultado = JSON.parse(mapContext.value);
+                if (resultado['custbodyrsc_tpparc'] == null || resultado['custbodyrsc_tpparc'] > 2 ){
+                    log.audit({title:'Resultado', details: resultado});
+                    var parcela = record.load({type: 'customsale_rsc_financiamento', id: resultado['id'],isDynamic: false});
+                    log.audit({title:'Parcela', details: parcela});
 
-            internalid = searchResult.id;
-            log.debug({title:'Id', details: internalid});
-
-            log.debug({title: 'subsidiary', details:searchResult.values['subsidiary'] })
-            /* recuperar os dados */
-            var subsidiary = record.load({
-                type: record.Type.SUBSIDIARY,
-                id: searchResult.values['subsidiary'].value,
-                isDynamic: false,
-            });
-
-            let address = subsidiary.getSubrecord({ fieldId: 'mainaddress' });
-            var cidade = record.load({ type: 'customrecord_enl_cities', id:address.getValue('custrecord_enl_city') });
-            log.audit({title: 'Cidade', details: cidade});
-            var codProject = subsidiary.getValue('name').substr(0,4) + '_' + subsidiary.getValue('name').substr(0,4);
-            /* montar o body do request */
-            var body = {
-                Codigo: codProject,
-                nome: searchResult.values['companyname'],
-                apelido: '',
-                dataHabitese: searchResult.values['custentity_rsc_project_date_habite'],
-                dataLancamento: searchResult.values['custentity_rsc_inicio_venda'],
-                dataEntregaEfetiva: searchResult.values['projectedenddate'],
-                dataInicioObra: searchResult.values['startdate'] ,
-                Cep: address.getValue('zip'),
-                endereco: address.getValue('addr1'),
-                Bairro: address.getValue('addr3'),
-                Cidade: cidade.getValue('name'),
-                Estado: address.getValue('state'),
-                Numero: address.getValue('custrecord_enl_numero'),
-                Complemento: address.getValue('addr2'),
-                statusObra: '',
-                codigoSPE: subsidiary.getValue('name').substr(0,4)
-            }
-            log.debug({title: 'body', details: body})
+                    var parcelas = parcela.findSublistLineWithValue({sublistId: 'item',fieldId: 'item', value: resultado['custrecord_rsc_isi_item']})
+                    log.audit({title: 'Itens', details: parcelas});
+                    parcela.setSublistValue({
+                        sublistId: 'item',
+                        line: parcelas,
+                        value: resultado['valor']/resultado['custbody_rsc_finan_indice_base_cont'],
+                        fieldId: 'quantity'});
+                    parcela.setSublistValue({
+                        fieldId: 'amount',
+                        sublistId: 'item',
+                        line: parcelas,
+                        value: 0
+                    });
+                    parcela.save({ignoreMandatoryFields: true});
+                }
 
 
-            var retorno = JSON.parse(api.sendRequest(body, 'EMPREENDIMENTO_JUNIX/1.0/'));
-            log.debug({title: "retorno", details: retorno});
-            if (retorno.OK){
-                var job_update = record.load({
-                    type: record.Type.JOB,
-                    id: internalid,
-                    isDynamic: false,
-                });
-                log.debug({title: "Retornou Ok.", details: "Retornou o ID " + retorno.Dados});
-                job_update.setValue('custentity_rsc_atualizadocontrato_junix', true);
-                job_update.setValue('custentity_rsc_junix_id', retorno.Dados);
-                job_update.setValue('custentity_rsc_codigo_junix_obra', codProject);
-
-                job_update.save();
-            } else {
-                log.debug({title: "Retornou Erro .", details: "Mensagem Erro " + retorno.Mensagem});
-            }
-            subsidiary.save({ignoreMandatoryFields: true});
-
-            var scriptObj = runtime.getCurrentScript();
-            log.debug({
-                title: "Remaining usage units: ",
-                details: scriptObj.getRemainingUsage()
-            });
-            } catch (e){
-                log.error({title : 'Erro ao processar', details: e.message()})
+            } catch (e) {
+                log.error({title: 'Erro Parcela', details: e.message});
             }
         }
 

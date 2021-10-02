@@ -3,9 +3,7 @@
  * @NScriptType MapReduceScript
  */
 define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
-    /**
- * @param{search} search
- */
+    
     (search, runtime, record, api) => {
         /**
          * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
@@ -19,43 +17,26 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          * @returns {Array|Object|Search|ObjectRef|File|Query} The input data to use in the map/reduce process
          * @since 2015.2
          */
-
         const getInputData = (inputContext) => {
-            return search.create({
-                type: "job",
-                filters:
-                    [
-                        ["custentity_rsc_atualizadocontrato_junix","is","F"],
-                        "AND",
-                        ["custentity_rsc_junix_aprovado_envio","is","T"]
-                    ],
-                columns:
-                    [
-                        search.createColumn({
-                            name: "entityid",
-                            sort: search.Sort.ASC,
-                            label: "ID"
-                        }),
-                        search.createColumn({name: "companyname", label: "Name"}),
-                        search.createColumn({name: "email", label: "Email"}),
-                        search.createColumn({name: "phone", label: "Phone"}),
-                        search.createColumn({name: "altphone", label: "Office Phone"}),
-                        search.createColumn({name: "fax", label: "Fax"}),
-                        search.createColumn({name: "customer", label: "Customer"}),
-                        search.createColumn({name: "entitystatus", label: "Status"}),
-                        search.createColumn({name: "contact", label: "Primary Contact"}),
-                        search.createColumn({name: "jobtype", label: "Project Type"}),
-                        search.createColumn({name: "startdate", label: "Start Date"}),
-                        search.createColumn({name: "projectedenddate", label: "Projected End Date"}),
-                        search.createColumn({name: "altemail", label: "Alt. Email"}),
-                        search.createColumn({name: "subsidiary", label: "Subsidiary"}),
-                        search.createColumn({name: "custentity_lrc_matricula", label: "Matrícula"}),
-                        search.createColumn({name: "custentity_project_type_np", label: "Project Type"}),
-                        search.createColumn({name: "custentity_rsc_project_date_habite", label:"Data Habite"}),
-                        search.createColumn({name: "custentity_rsc_inicio_venda", label:"Inicio Venda"})
-                    ]
-            });
-
+                return search.create({
+                        type: "customrecord_rsc_bl_emp",
+                        filters:
+                            [
+                                    ["custrecord_rsc_bl_emp_int_junix","is","F"]
+                            ],
+                        columns:
+                            [
+                                    search.createColumn({
+                                            name: "name",
+                                            sort: search.Sort.ASC,
+                                            label: "Name"
+                                    }),
+                                    search.createColumn({name: "scriptid", label: "Script ID"}),
+                                    search.createColumn({name: "custrecord_rsc_bl_emp_desc", label: "Descrição"}),
+                                    search.createColumn({name: "custrecord_rsc_bl_emp_projeto", label: "Empreendimento"}),
+                                    search.createColumn({name: "custrecord_rsc_bl_emp_dt_chaves", label: "Data Chaves"}),
+                            ]
+                });
         }
 
         /**
@@ -74,78 +55,70 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          * @param {string} mapContext.value - Value to be processed during the map stage
          * @since 2015.2
          */
-
         const map = (mapContext) => {
-            try {
+                try {
+                log.debug({title:'Map', details: mapContext});
+                var searchResult = JSON.parse(mapContext.value);
 
+                internalid = searchResult.id;
 
-            log.debug({title:'Map', details: mapContext});
-            var searchResult = JSON.parse(mapContext.value);
-
-            internalid = searchResult.id;
-            log.debug({title:'Id', details: internalid});
-
-            log.debug({title: 'subsidiary', details:searchResult.values['subsidiary'] })
-            /* recuperar os dados */
-            var subsidiary = record.load({
-                type: record.Type.SUBSIDIARY,
-                id: searchResult.values['subsidiary'].value,
-                isDynamic: false,
-            });
-
-            let address = subsidiary.getSubrecord({ fieldId: 'mainaddress' });
-            var cidade = record.load({ type: 'customrecord_enl_cities', id:address.getValue('custrecord_enl_city') });
-            log.audit({title: 'Cidade', details: cidade});
-            var codProject = subsidiary.getValue('name').substr(0,4) + '_' + subsidiary.getValue('name').substr(0,4);
-            /* montar o body do request */
-            var body = {
-                Codigo: codProject,
-                nome: searchResult.values['companyname'],
-                apelido: '',
-                dataHabitese: searchResult.values['custentity_rsc_project_date_habite'],
-                dataLancamento: searchResult.values['custentity_rsc_inicio_venda'],
-                dataEntregaEfetiva: searchResult.values['projectedenddate'],
-                dataInicioObra: searchResult.values['startdate'] ,
-                Cep: address.getValue('zip'),
-                endereco: address.getValue('addr1'),
-                Bairro: address.getValue('addr3'),
-                Cidade: cidade.getValue('name'),
-                Estado: address.getValue('state'),
-                Numero: address.getValue('custrecord_enl_numero'),
-                Complemento: address.getValue('addr2'),
-                statusObra: '',
-                codigoSPE: subsidiary.getValue('name').substr(0,4)
-            }
-            log.debug({title: 'body', details: body})
-
-
-            var retorno = JSON.parse(api.sendRequest(body, 'EMPREENDIMENTO_JUNIX/1.0/'));
-            log.debug({title: "retorno", details: retorno});
-            if (retorno.OK){
-                var job_update = record.load({
-                    type: record.Type.JOB,
-                    id: internalid,
+                log.debug({title: 'Job', details:searchResult.values['custrecord_rsc_bl_emp_projeto'] })
+                /* recuperar os dados */
+                var projeto = record.load({
+                        type: record.Type.JOB,
+                        id: searchResult.values['custrecord_rsc_bl_emp_projeto'].value,
+                        isDynamic: false,
+                });
+                log.debug({title: 'Cod Sub', details: projeto.getValue('custentity_rsc_aprop_subsidiaria')});
+                var subsidiary = record.load({
+                                type: record.Type.SUBSIDIARY,
+                                id: projeto.getValue('custentity_rsc_aprop_subsidiaria'),
+                                isDynamic: false});
+                var codProject = subsidiary.getValue('name').substr(0,4) + '_' + subsidiary.getValue('name').substr(0,4);
+                /* montar o body do request */
+                var body = {
+                        codigo: searchResult.id,
+                        codigoEmpreendimento: codProject,
+                        nomeBloco: searchResult.values['custrecord_rsc_bl_emp_desc'],
+                        dataEntregaChaves: searchResult.values['custrecord_rsc_bl_emp_dt_chaves']
+                }
+                log.debug({title: 'body', details: body})
+                /* Atualizar como processsado*/
+                /*var load_sub =  record.load({
+                    type: record.Type.SUBSIDIARY,
+                    id: rec_id,
                     isDynamic: false,
                 });
-                log.debug({title: "Retornou Ok.", details: "Retornou o ID " + retorno.Dados});
-                job_update.setValue('custentity_rsc_atualizadocontrato_junix', true);
-                job_update.setValue('custentity_rsc_junix_id', retorno.Dados);
-                job_update.setValue('custentity_rsc_codigo_junix_obra', codProject);
 
-                job_update.save();
-            } else {
-                log.debug({title: "Retornou Erro .", details: "Mensagem Erro " + retorno.Mensagem});
-            }
-            subsidiary.save({ignoreMandatoryFields: true});
+                load_sub.setValue('custrecord_rsc_atualizado_junix', false);
+                load_sub.save(); */
 
-            var scriptObj = runtime.getCurrentScript();
-            log.debug({
-                title: "Remaining usage units: ",
-                details: scriptObj.getRemainingUsage()
-            });
-            } catch (e){
-                log.error({title : 'Erro ao processar', details: e.message()})
-            }
+                var retorno = JSON.parse(api.sendRequest(body, 'BLOCO_JUNIX/1.0/'));
+                log.debug({title: "retorno", details: retorno});
+
+                if (retorno.OK){
+                        var job_update = record.load({
+                                type: 'customrecord_rsc_bl_emp',
+                                id: internalid,
+                                isDynamic: false,
+                        });
+                        log.debug({title: "Retornou Ok.", details: "Retornou o ID " + retorno.Dados});
+                        job_update.setValue('custrecord_rsc_bl_emp_int_junix', true);
+                        job_update.setValue('custrecord_rsc_bl_emp_idJunix', retorno.Dados);
+                        job_update.save();
+                } else {
+                        log.debug({title: "Retornou Erro .", details: "Mensagem Erro " + retorno.Mensagem});
+                }
+
+
+                var scriptObj = runtime.getCurrentScript();
+                log.debug({
+                        title: "Remaining usage units: ",
+                        details: scriptObj.getRemainingUsage()
+                });
+                } catch (e){
+                        log.error({title: 'Erro', details: e.message})
+                }
         }
 
         /**

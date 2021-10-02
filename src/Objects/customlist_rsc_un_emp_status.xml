@@ -1,0 +1,29 @@
+<customlist scriptid="customlist_rsc_un_emp_status">
+  <description></description>
+  <isinactive>F</isinactive>
+  <ismatrixoption>F</ismatrixoption>
+  <isordered>T</isordered>
+  <name>Status Unidade</name>
+  <customvalues>
+    <customvalue scriptid="dp">
+      <abbreviation>D</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Disponível</value>
+    </customvalue>
+    <customvalue scriptid="es">
+      <abbreviation>E</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Espera</value>
+    </customvalue>
+    <customvalue scriptid="vp">
+      <abbreviation>P</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Proposta</value>
+    </customvalue>
+    <customvalue scriptid="pe">
+      <abbreviation>P</abbreviation>
+      <isinactive>F</isinactive>
+      <value>Permuta</value>
+    </customvalue>
+  </customvalues>
+</customlist>

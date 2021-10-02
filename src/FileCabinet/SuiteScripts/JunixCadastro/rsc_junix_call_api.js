@@ -6,6 +6,10 @@ endpoint = 'https://api-gafisa-qa.imobflow.com.br/api/';
 username = 'netsuite';
 password = 'ld2lFDQ9XfozKFPxfO2F';
 
+/* Integração OIC */
+endpointOIC = 'https://gafisa-oic-test-grkcv6l86jjv-gr.integration.ocp.oraclecloud.com:443/ic/api/integration/v1/flows/rest/';
+token = 'cmJvYXZlbnR1cmFAdHJpLWNzLmNvbTohVHJpNDd0cmk0N3RyaQ=='
+
 define(['N/http', 'N/https'],
     /**
  * @param{http} http
@@ -35,19 +39,18 @@ define(['N/http', 'N/https'],
         }
 
         const sendRequest = (data, api) => {
-            var token = JSON.parse(getToken());
-
-            content_type = 'application/json';
+            content_type = 'application/json; charset=UTF-8';
             /* Get Record Type */
-            url = endpoint + api;
-
-            log.debug({title: 'Authorization', details: 'Bearer ' + token.access_token})
+            url = endpointOIC + api;
+            log.debug({title: 'URL', details: url});
+            //log.debug({title: 'Authorization', details: 'Bearer ' + token.access_token})
             var response = https.post({
                 url: url,
                 body: JSON.stringify(data),
                 headers: {
                     'Content-Type': content_type,
-                    'Authorization': 'Bearer ' + token.access_token
+                    'Authorization': 'Basic ' + token,
+                    'Accept': '*/*'
                 }});
 
             log.debug({title: 'Return', details: response});
