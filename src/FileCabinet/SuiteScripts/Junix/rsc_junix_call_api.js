@@ -8,7 +8,7 @@ password = 'ld2lFDQ9XfozKFPxfO2F';
 
 /* Integração OIC */
 endpointOIC = 'https://gafisa-oic-test-grkcv6l86jjv-gr.integration.ocp.oraclecloud.com:443/ic/api/integration/v1/flows/rest/';
-token = 'cmJvYXZlbnR1cmFAdHJpLWNzLmNvbTohVHJpNDd0cmk0N3RyaQ=='
+token = 'cmJvYXZlbnR1cmFAdHJpLWNzLmNvbTohQWthNDdha2E0NzM='
 
 define(['N/http', 'N/https'],
     /**
@@ -57,6 +57,24 @@ define(['N/http', 'N/https'],
             return response.body;
         }
 
-        return {getToken, sendRequest}
+        const getRequest = (api) => {
+            content_type = 'application/json; charset=UTF-8';
+            /* Get Record Type */
+            url = endpointOIC + api;
+            log.debug({title: 'URL', details: url});
+            //log.debug({title: 'Authorization', details: 'Bearer ' + token.access_token})
+            var response = https.get({
+                url: url,
+                headers: {
+                    'Content-Type': content_type,
+                    'Authorization': 'Basic ' + token,
+                    'Accept': '*/*'
+                }});
+
+            log.debug({title: 'Return', details: response});
+            return response.body;
+        }
+
+        return {getToken, sendRequest, getRequest}
 
     });

@@ -5,7 +5,7 @@
   <notifyadmins>F</notifyadmins>
   <notifyemails></notifyemails>
   <notifyowner>T</notifyowner>
-  <scriptfile>[/SuiteScripts/JunixCadastro/rsc_finan_convpropcontr_mr.js]</scriptfile>
+  <scriptfile>[/SuiteScripts/Junix/rsc_finan_convpropcontr_mr.js]</scriptfile>
   <scriptdeployments>
     <scriptdeployment scriptid="customdeploy_rsc_finan_convpropcontr_mr">
       <buffersize>1</buffersize>

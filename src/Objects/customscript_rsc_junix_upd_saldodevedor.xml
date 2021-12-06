@@ -1,0 +1,18 @@
+<mapreducescript scriptid="customscript_rsc_junix_upd_saldodevedor">
+    <isinactive>F</isinactive>
+    <name>RSC Junix - Send Saldo Devedor </name>
+    <notifyowner>T</notifyowner>
+    <scriptfile>[/SuiteScripts/Junix/rsc_junix_upd_saldodevedor.js]</scriptfile>
+    <scriptdeployments>
+        <scriptdeployment scriptid="customdeploy_rsc_junix_upd_saldodevedor">
+            <buffersize>1</buffersize>
+            <concurrencylimit>1</concurrencylimit>
+            <isdeployed>T</isdeployed>
+            <loglevel>DEBUG</loglevel>
+            <title>RSC Junix - Send Saldo Devedor</title>
+            <runasrole></runasrole>
+            <status>NOTSCHEDULED</status>
+            <yieldaftermins>60</yieldaftermins>
+        </scriptdeployment>
+    </scriptdeployments>
+</mapreducescript>

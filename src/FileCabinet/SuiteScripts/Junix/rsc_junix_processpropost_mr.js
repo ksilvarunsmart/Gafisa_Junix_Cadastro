@@ -10,28 +10,23 @@ var listaClientes = new Array();
 
 
 
-define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/query", "N/https"],
+define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/query", './rsc_finan_comissao_venda.js', './rsc_finan_createproposta.js'],
 
-    (record, runtime, search, api, query, https) => {
-            function _createComissionGafisa(comissionado) {
-                    /* Valida se é filial Gafisa */
-                    var subsidiary = query.runSuiteQL({query: 'select id from subsidiary where federalidnumber = ?',
-                            params: [comissionado.cpF_CNPJ]}).asMappedResults();
-                    if (subsidiary.length> 0){
-                            /* Subsidiaria é da Gafisa Gerar pedido de vendasCria Comissão */
-                            var subsidi = subsidiary[0].id;
-                            var clientCommission = codEmpreendimento;
-                            var itemComissao = 275;
-                    }
-            }
+    (record, runtime, search, api, query, comissao, propostaFunction) => {
 
-            function tratarData(data) {
-                    var dataCadastro = data.split('T');
-                    var dateCadastro = dataCadastro[0].split('-');
-                    var cadastroData = dateCadastro[2] + '/' + dateCadastro[1] + '/' + dateCadastro[0];
-                    cadastroData = cadastroData.replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$2/$1/$3");
-                    cadastroData = new Date(cadastroData);
-                    return cadastroData;
+            /**
+             * Function to format date and return new date object.
+             * @param {String} date
+             * @returns {Date} Return formated date
+             * @since 2015.2
+             */
+            function formatDate(date) {
+                    var dateToFormat = date.split('T');
+                    var arrayDateToFormat = dateToFormat[0].split('-');
+                    var dateStringToFormat = arrayDateToFormat[2] + '/' + arrayDateToFormat[1] + '/' + arrayDateToFormat[0];
+                    dateStringToFormat = dateStringToFormat.replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$2/$1/$3");
+                    var returnDate = new Date(dateStringToFormat);
+                    return returnDate;
             }
 
             /**
@@ -47,6 +42,7 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
              * @since 2015.2
              */
             const getInputData = (inputContext) => {
+                    /* Return all unprocessed values, maybe change to query in the future */
                     return search.create({
                             type: "customrecord_rsc_junix_feed_proposta",
                             filters:
@@ -90,22 +86,38 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
              * @since 2015.2
              */
             const map = (mapContext) => {
+                    /* Get value to process */
                     var proposta = JSON.parse(mapContext.value);
+                    /* Open record to registry to log o process */
                     var registroProcesso = record.load({type: 'customrecord_rsc_junix_feed_proposta', id: proposta.id});
                     try {
-
-                            log.audit({title: 'Proposta', details: proposta});
+                            /* Recovery propose from Junix to process updated value, if necessary we can change to recovery
+                            *  from Junix Feed record type */
+                            log.debug({title: 'Proposta', details: proposta});
                             var body = {
                                     tipoFiltro: "NÃO PROCESSADOS",
                                     Codigo: registroProcesso.getValue('custrecord_rsc_numero_proposta')
-                            }
-                            var retorno = JSON.parse(api.sendRequest(body, 'PROPOSTA_PESQVENDA_JUNIX/1.0/'));
+                            };
 
-                            mapContext.write(proposta.id, retorno);
+                            var retorno = JSON.parse(api.sendRequest(body, 'PROPOSTA_PESQVENDA_JUNIX/1.0/'));
+                            log.debug({title:'JSON', details: retorno});
+
+                            /* Validate if proposta is same approve status. */
+                            var fase = proposta.Status.Fase;
+                            var sintese = proposta.Status.Sintese;
+                            if ((fase == 'SECRETARIA DE VENDAS') && (sintese == 'CONTRATO EMITIDO')) {
+                                    mapContext.write(proposta.id, retorno);
+                            } else {
+                                    registroProcesso.setValue({fieldId:'custrecord_rsc_log_error', value:'Proposta Fora de Status'});
+                            }
 
                     } catch (e) {
-                            log.audit({title: 'Erro ao recuperar o Valor', details: e.message})
+                            log.audit({title: 'Erro ao recuperar o Valor', details: e.message});
+                            registroProcesso.setValue({fieldId: 'custrecord_rsc_log_error', value: e.message});
+                            registroProcesso.setValue({fieldId: 'custrecord_rsc_erro_flag', value: 'T'});
+                            registroProcesso.setValue({fieldId: 'custrecord_rsc_processado', value: 'T'});
                     }
+                    /* Save registry */
                     registroProcesso.save({ignoreMandatoryFields: false})
             }
 
@@ -126,7 +138,6 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
              */
             const reduce = (reduceContext) => {
                     var retorno = reduceContext.values;
-
                     createFaturaParcela(retorno, reduceContext.key);
             }
 
@@ -275,93 +286,7 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                             value: speNetsuite
                                     });
                             }
-                            var linhas = customerRecord.getLineCount({sublistId: 'addressbook'});
 
-                            for (d = 0; d < linhas; d++) {
-                                    customerRecord.removeLine({sublistId: 'addressbook', line: d});
-                            }
-
-                            var addressDatas = comprador.Cliente.Enderecos;
-                            for (k = 0; k < addressDatas.length; k++) {
-                                    var addressData = addressDatas[k];
-                                    if (addressData) {
-                                            var linhaInsert = k;
-                                            customerRecord.insertLine({
-                                                    sublistId: 'addressbook',
-                                                    line: linhaInsert
-                                            });
-
-                                            customerRecord.setSublistValue({
-                                                    sublistId: 'addressbook',
-                                                    fieldId: 'label',
-                                                    value: linhaInsert,
-                                                    line: linhaInsert
-                                            });
-
-                                            customerRecord.setSublistValue({
-                                                    sublistId: 'addressbook',
-                                                    fieldId: 'defaultbilling',
-                                                    value: (linhaInsert == 0 ? true : false),
-                                                    line: linhaInsert
-                                            });
-
-                                            customerRecord.setSublistValue({
-                                                    sublistId: 'addressbook',
-                                                    fieldId: 'defaultshipping',
-                                                    value: (linhaInsert == 0 ? true : false),
-                                                    line: linhaInsert
-                                            });
-
-                                            customerRecord.setSublistValue({
-                                                    sublistId: 'addressbook',
-                                                    fieldId: 'isresidential',
-                                                    value: (linhaInsert == 0 ? true : false),
-                                                    line: linhaInsert
-                                            });
-
-                                            var subrec2 = customerRecord.getSublistSubrecord({
-                                                    sublistId: 'addressbook',
-                                                    fieldId: 'addressbookaddress',
-                                                    line: linhaInsert
-                                            });
-
-                                            const cep = addressData.CEP.replace(/\D/g, '');
-                                            //const url = 'https://viacep.com.br/ws/' + cep + '/json/';
-                                            //const ibge = JSON.parse(https.get({url: url}).body).ibge;
-                                            //log.debug({title: 'IBGE', details: ibge})
-                                            var address = {
-                                                    label: 'Principal',
-                                                    country: 'BR',
-                                                    zip: addressData.CEP,
-                                                    addr1: addressData.Endereco,
-                                                    addr2: addressData.EnderecoComplemento,
-                                                    custrecord_enl_numero: addressData.EnderecoNumero,
-                                                    addr3: addressData.Bairro.substring(0, 30),
-                                                    state: addressData.UF,
-                                                    city: addressData.Cidade,//_getCityId(addressData.city),
-                                                    addressee: comprador.Cliente.Nome
-                                            }
-
-                                            log.debug({title: 'Address', details: address});
-
-                                            Object.keys(address).forEach(function (field) {
-
-                                                    if (field === 'state') {
-                                                            log.audit({title: 'state', details: address[field]})
-                                                            subrec2.setText({
-                                                                    fieldId: field,
-                                                                    value: address[field]
-                                                            });
-                                                    } else {
-                                                            log.debug({title: 'campo', details: field})
-                                                            subrec2.setValue({
-                                                                    fieldId: field,
-                                                                    value: address[field]
-                                                            });
-                                                    }
-                                            });
-                                    }
-                            }
                     } else {
                             customerRecord = record.create({
                                     type: record.Type.CUSTOMER,
@@ -615,13 +540,16 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
             }
 
             function createFaturaParcela(retorno, key) {
-                    try {
-                            var dadosRetorno = (JSON.parse(retorno))[0];
-                            //var listaClientes = (JSON.parse(retorno))[1];
-                            log.audit({title: 'Retorno', details: dadosRetorno})
-                            var registroProcesso = record.load({type: 'customrecord_rsc_junix_feed_proposta', id: key});
+                    /* Recupera dados do registro a ser processado. */
+                    var dadosRetorno = (JSON.parse(retorno))[0];
 
+                    /* Recupera registro do processamento para log dos erros.*/
+                    var registroProcesso = record.load({type: 'customrecord_rsc_junix_feed_proposta', id: key});
+
+                    try {
+                            /* Obtem os dados da Subsidiaria */
                             getSPEObra(dadosRetorno.CodigoEmpreendimento);
+
                             var speNetsuite = codEmpreendimento;
 
                             var projetoObra = codProjeto;
@@ -630,8 +558,6 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                     listaClientes = [];
                                     /* Create or validate Client */
                                     var compradores = dadosRetorno.ListaCompradores;
-                                    //log.audit({title: 'Compradores', details: compradores});
-                                    //log.audit({title: 'Contador Compradores', details: compradores.length});
                                     if (compradores.length > 0) {
                                             for (let i = 0; i < compradores.length; i++) {
                                                     var comprador = compradores[i];
@@ -645,11 +571,10 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                             }
                                     }
 
-                                    var dataCadastroJunix = tratarData(dadosRetorno.DataCadastro);
+                                    /* Prepare fields to create  */
+                                    var dataCadastroJunix = formatDate(dadosRetorno.DataCadastro);
 
-                                    log.debug({title: 'Data Venda', details: dadosRetorno.DataVenda});
-
-                                    var vendaData = tratarData(dadosRetorno.DataVenda);
+                                    var vendaData = formatDate(dadosRetorno.DataVenda);
 
                                     var fieldsInvoice = {
                                             "custbody_rsc_nr_proposta": dadosRetorno.NumeroProposta,
@@ -681,9 +606,10 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                             "custbody_lrc_assessoria": dadosRetorno.Assessoria,
                                             "custbody_lrc_vlr_total_comissao": dadosRetorno.ValorTotalComissao,
                                             "custbody_rsc_vlr_venda": dadosRetorno.ValorVenda,
-                                            "custbody_rsc_tran_unidade": dadosRetorno.CodigoUnidade
+                                            "custbody_rsc_tran_unidade": dadosRetorno.CodigoUnidade,
+
                                     };
-                                    log.audit({title: 'Valores', details:fieldsInvoice})
+
                                     var invoiceRecord = record.create({
                                             type: 'invoice',
                                             isDynamic: false
@@ -701,23 +627,28 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                             value: idClientePrincipal
                                     });
                                     var localidade = codLocation;
+
+                                    /* Create Configuration to Default Item */
                                     var item = 287;
                                     invoiceRecord.setValue({
                                             fieldId: 'location',
                                             value: localidade
                                     });
+
                                     invoiceRecord.setSublistValue({
                                             fieldId: 'item',
                                             sublistId: 'item',
                                             line: 0,
                                             value: item
                                     });
+
                                     invoiceRecord.setSublistValue({
                                             fieldId: 'amount',
                                             sublistId: 'item',
                                             line: 0,
-                                            value: dadosRetorno.ValorVendaAtualizada
+                                            value: dadosRetorno.ValorTotalIncorporadora
                                     });
+
                                     invoiceRecord.setSublistValue({
                                             fieldId: 'quantity',
                                             sublistId: 'item',
@@ -725,11 +656,12 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                             value: 1
                                     });
 
+                                    /* Create Fatura */
                                     var faturaPrincipalId = invoiceRecord.save({
                                             ignoreMandatoryFields: true
                                     });
 
-                                    /* Incluir Clientes */
+                                    /* Include Client in contract */
                                     log.debug({title:'Lista clientes', details: listaClientes.length})
                                     for (let i = 0; i < listaClientes.length; i++) {
                                             var listaCli = record.create({
@@ -741,6 +673,8 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                             listaCli.setValue('custrecord_rsc_principal', (listaClientes[i] == idClientePrincipal ? true : false));
                                             listaCli.save({ignoreMandatoryFields: true});
                                     }
+
+                                    /* Update unit status */
                                     var unidade = record.load(
                                         {
                                                 type: 'customrecord_rsc_unidades_empreendimento',
@@ -753,7 +687,13 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                     unidade.save({
                                             ignoreMandatoryFields: true
                                     })
-
+                                    var comm = comissao._newCommission(
+                                        idClientePrincipal,
+                                        dadosRetorno.NumeroProposta,
+                                        faturaPrincipalId,
+                                        dataCadastroJunix,
+                                        projetoObra,
+                                        dadosRetorno.CodigoUnidade);
                                     log.audit({title: 'Id Venda', details: faturaPrincipalId});
 
                                     var faturas = dadosRetorno.ListaParcelas;
@@ -763,14 +703,12 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                                     var scriptObj = runtime.getCurrentScript();
                                                     log.debug('Remaining governance units: ' + scriptObj.getRemainingUsage());
 
-                                                    /*log.audit({title: 'Lista Fatura', details: fatura})*/
                                                     /* Prepara a data de vencimento */
-                                                    var parcelaVencData = tratarData(fatura.Data);
+                                                    var parcelaVencData = formatDate(fatura.Data);
 
                                                     log.debug('Remaining governance units: ' + scriptObj.getRemainingUsage());
 
                                                     log.debug({title: "Venciemento", details: parcelaVencData});
-                                                    //log.debug({title: "trandate", details: cadastroData});
 
                                                     var tipoParcela = '';
                                                     switch (fatura.TipoParcela) {
@@ -799,6 +737,7 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                                             default: tipoParcela = 4;
                                                                     break;
                                                     }
+
                                                     var fieldsCustomerParcela = {
                                                             "custbody_rsc_nr_proposta": dadosRetorno.NumeroProposta,
                                                             "duedate": parcelaVencData,
@@ -816,7 +755,8 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                                             "terms": 4,
                                                             "status": 'B',
                                                             "account": 122,
-                                                            "custbody_rsc_tran_unidade": dadosRetorno.CodigoUnidade
+                                                            "custbody_rsc_tran_unidade": dadosRetorno.CodigoUnidade,
+                                                            "custbody_rsc_planocontratual": 'T'
                                                     };
 
                                                     log.debug('Remaining governance units: ' + scriptObj.getRemainingUsage());
@@ -880,7 +820,7 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                                                                     fieldId: 'amount',
                                                                                     sublistId: 'item',
                                                                                     line: r,
-                                                                                    value: fatura.ValorParcela
+                                                                                    value: fatura.ValorIncorporadora
                                                                             });
                                                                     } else {
                                                                             invoiceRecord.setSublistValue({
@@ -912,16 +852,18 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
                                                             if (comissionados.length > 0) {
                                                                     for (let i = 0; i < comissionados.length; i++) {
                                                                             var comissionado = comissionados[i];
-                                                                            _createComissionGafisa(comissionado);
+                                                                            comm = comissao._summarizeValues(comm, comissionado, parcelaVencData, fatura.CodParcela);
                                                                     }
                                                             }
                                                     }
-                                                    log.debug('Remaining governance units: ' + scriptObj.getRemainingUsage());
+
 
                                                     log.audit({title: 'Id Venda', details: idParcelaRecord});
                                             }
                                     }
 
+                                    comm = comissao._createCommission(comm);
+                                    log.debug('Remaining governance units: ' + scriptObj.getRemainingUsage());
                                     registroProcesso.setValue(
                                         {
                                                 fieldId: 'custrecord_rsc_invoice_netsuite',
@@ -952,7 +894,7 @@ define([ "N/record", "N/runtime", "N/search", './rsc_junix_call_api.js', "N/quer
 
                             registroProcesso.save();
                             /* Marcar como Processado*/
-                            //api.sendPutRequest(dadosRetorno.NumeroProposta, '');
+                            api.getRequest( 'MARCARCOMOPROCES_JUNIX/1.0/' + dadosRetorno.NumeroProposta);
                     } catch (e) {
                             log.error({title: 'Erro Processamento', details: e.toString()})
                     }

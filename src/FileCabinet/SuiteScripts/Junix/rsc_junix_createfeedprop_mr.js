@@ -2,9 +2,9 @@
  * @NApiVersion 2.1
  * @NScriptType MapReduceScript
  */
-define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
+define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js', './rsc_finan_createproposta.js'],
     
-    (search, runtime, record, api) => {
+    (search, runtime, record, api, propostaFunction) => {
         /**
          * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
          * @param {Object} inputContext
@@ -43,17 +43,28 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
          * @since 2015.2
          */
         const map = (mapContext) => {
-                log.debug({title: 'Resultado', details: mapContext.value});
+//                log.debug({title: 'Resultado', details: mapContext.value});
                 var proposta = JSON.parse(mapContext.value);
-                log.debug({title: 'Resultado', details: proposta.NumeroProposta});
-                var feed = record.create({
-                        type: 'customrecord_rsc_junix_feed_proposta',
-                        isDynamic: true
-                })
-                feed.setValue({fieldId: 'custrecord_rsc_numero_proposta', value: proposta.NumeroProposta});
-                feed.save({
-                        ignoreMandatoryFields: true
-                })
+                var fase = proposta.Status.Fase;
+                var sintese = proposta.Status.Sintese;
+                if ((fase == 'SECRETARIA DE VENDAS') && (sintese == 'CONTRATO EMITIDO')) {
+                        log.debug({title: 'Fase', details: proposta.Status.Fase});
+                        log.debug({title: 'Sintese', details: proposta.Status.Sintese});
+                        log.debug({title: 'Resultado', details: proposta.NumeroProposta});
+                        var getSpe = propostaFunction.getSPEObra(proposta.CodigoEmpreendimento);
+                        log.debug({title: 'GetSPE', details: getSpe});
+                        if (getSpe.codEmpreendimento != null){
+                                var feed = record.create({
+                                        type: 'customrecord_rsc_junix_feed_proposta',
+                                        isDynamic: true
+                                });
+                                feed.setValue({fieldId: 'custrecord_rsc_numero_proposta', value: proposta.NumeroProposta});
+                                feed.setValue({fieldId: 'custrecord_rsc_feed_json', value: proposta});
+                                feed.save({
+                                        ignoreMandatoryFields: true
+                                });
+                        }
+                }
         }
 
         /**

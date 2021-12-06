@@ -5,7 +5,7 @@
   <notifyadmins>F</notifyadmins>
   <notifyemails></notifyemails>
   <notifyowner>T</notifyowner>
-  <scriptfile>[/SuiteScripts/JunixCadastro/rsc_finan_atualizarindice_mr.js]</scriptfile>
+  <scriptfile>[/SuiteScripts/Junix/rsc_finan_atualizarindice_mr.js]</scriptfile>
   <scriptcustomfields>
     <scriptcustomfield scriptid="custscript_rsc_effective_date">
       <accesslevel>2</accesslevel>

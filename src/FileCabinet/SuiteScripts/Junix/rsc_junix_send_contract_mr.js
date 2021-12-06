@@ -25,7 +25,7 @@ define(['N/search', 'N/record', './rsc_junix_call_api.js', 'N/query'],
                             'custbody_rsc_ativo, custbody_lrc_tipo_contrato, a.foreigntotal from transaction a \n' +
                             'join job b on b.id = a.custbody_rsc_projeto_obra_gasto_compra\n' +
                             'join customrecord_rsc_unidades_empreendimento c on c.id = a.custbody_rsc_tran_unidade\n' +
-                            ' where type = \'CustInvc\' and a.id = 51415 and custbody_rsc_status_contrato = \'2\' '}).asMappedResults();
+                            ' where type = \'CustInvc\' and a.id = 54552 and custbody_rsc_status_contrato = \'2\' '}).asMappedResults();
         }
 
         /**
@@ -51,63 +51,15 @@ define(['N/search', 'N/record', './rsc_junix_call_api.js', 'N/query'],
                         var resultado = JSON.parse(mapContext.value);
                         log.debug({title: 'Requisicao', details: resultado});
 
-                        var parcelas = [];
-
-                        search.create({
-                                type: 'transaction',
-                                filters: [
-                                        ['custbody_lrc_fatura_principal', 'IS', resultado['id']],
-                                        'AND',
-                                        ["type","anyof","CuTrSale123"],
-                                        'AND',
-                                        ["mainline","IS","T"]]
-                        }).run().each(function (result) {
-                                var recordParcela = record.load({
-                                        type: 'customsale_rsc_financiamento',
-                                        id: result.id
-                                });
-                                var parcela = {
-                                        codigo: recordParcela.id,
-                                        numeroSerie: recordParcela.getValue('custbodyrsc_tpparc'),
-                                        numeroParcela: 0,
-                                        tipoParcela: recordParcela.getValue('custbodyrsc_tpparc').value,
-                                        data: recordParcela.getValue('trandate'),
-                                        dataPagamento: "",
-                                        valorParcela: recordParcela.getValue('total'),
-                                        valorPago: 0,
-                                        valorEmAberto: 0,
-                                        valorParcelaPrincipal: recordParcela.getSublistValue({sublistId:'item', line: 0, fieldId: 'amount'}),
-                                        valorDesconto: 0,
-                                        juros: 0,
-                                        multa: 0,
-                                        mora: 0,
-                                        prorata: 0,
-                                        igpm: 0,
-                                        incc: recordParcela.getSublistValue({sublistId:'item', line: 2, fieldId: 'amount'}),
-                                        tipoJuros: "",
-                                        status: recordParcela.getValue('status'),
-                                        valorAtualizado: 0,
-                                        codigoParcelaExterno: "",
-                                        codigoContrato: 0,
-                                        codigoContratoExterno: "",
-                                        codigoClientePrincipal: recordParcela.getValue('entity'),
-                                        codigoClienteExterno: "",
-                                        codigoUnidadeExterno: "",
-                                        dataEmissaoBoleto: "",
-                                        dataVencimento: recordParcela.getValue('duedate')
-                                }
-                                parcelas.push(parcela);
-                                return true;
-                        });
-
                         var querySeries = query.runSuiteQL(
                             {query:'select b.recordid codigoSerie, b.name tipoParcela, TO_CHAR(min(a.duedate),\'YYYY-MM-DD\') dataReferencia, 0 taxaJuros, sum(foreigntotal), 0 prazo, max(foreigntotal) valorParcela,  TO_CHAR(min(a.duedate),\'YYYY-MM-DD\') dataPrimeiroVencimento, count(*) quantidade, count(*) quantidademeses, \'A VISTA\' tipoReceita\n' +
-                                    'from transaction a\n' +
-                                    'join customlist_rsc_tipo_parcela b on a.custbodyrsc_tpparc = b.recordid\n' +
-                                    'where custbody_lrc_fatura_principal = ?\n' +
-                                    'group by b.recordid, b.name', params: [resultado['id']]});
+                                        'from transaction a\n' +
+                                        'join customlist_rsc_tipo_parcela b on a.custbodyrsc_tpparc = b.recordid\n' +
+                                        'where custbody_lrc_fatura_principal = ?\n' +
+                                        'group by b.recordid, b.name', params: [resultado['id']]});
                         var resultadoSeries = querySeries.asMappedResults();
                         var series = [];
+                        var serieArray = [];
                         if (resultadoSeries.length > 0){
                                 for (let i = 0; i < resultadoSeries.length; i++) {
                                         var serie = resultadoSeries[i];
@@ -128,9 +80,87 @@ define(['N/search', 'N/record', './rsc_junix_call_api.js', 'N/query'],
                                                 "tipoReceita": serie['tipoReceita']
                                         }
                                         series.push(serieArr);
+                                        serieArray.push({"tipoParcela": serie['tipoparcela'], "codigoSerie": serie['codigoserie']})
                                 }
                         }
+                        var parcelas = [];
 
+                        var sql = 'select t.id codigo, \n' +
+                            '\tcustbodyrsc_tpparc numeroSerie,\n' +
+                            '\tcustbodyrsc_tpparc tpparc,\n' +
+                            '\tt.trandate data, \n' +
+                            '\t\' \' dataPagamento,\n' +
+                            '\tt.foreigntotal\tvalorParcela,\n' +
+                            '\tt.foreignamountpaid valorPago,\n' +
+                            '\tt.foreignamountunpaid valorEmAberto, \n' +
+                            '\t(select b.foreignamount from transactionline b where b.transaction = t.id and linesequencenumber = 0)\tvalorParcelaPrincipal,\n' +
+                            '\t0 valordesconto,\n' +
+                            '\t0 juros,\n' +
+                            '        0 multa,\n' +
+                            '        0 mora,\n' +
+                            '        0 prorata,\n' +
+                            '        0 igpm,\n' +
+                            '\t(select b.foreignamount from transactionline b where b.transaction = t.id and linesequencenumber = 2) incc,\n' +
+                            '\t\'\' tipoJuros,\n' +
+                            '\tstatus status,\n' +
+                            '\tt.foreigntotal valorAtualizado,\n' +
+                            '        \' \' codigoParcelaExterno,\n' +
+                            '        0 codigoContrato,\n' +
+                            '        \' \' codigoContratoExterno,\n' +
+                            '        t.entity codigoClientePrincipal,\n' +
+                            '        \' \' codigoClienteExterno,\n' +
+                            '        \' \' codigoUnidadeExterno,\n' +
+                            '        \' \' dataEmissaoBoleto,\n' +
+                            '        t.duedate dataVencimento\n' +
+                            'from transaction as t \n' +
+                            ' where t.custbody_lrc_fatura_principal = '+ resultado['id'] +' and t.type = \'CuTrSale\'  order by t.duedate asc';
+
+                        log.debug({title: 'Sql ', details: sql})
+                        var queryParcelas = query.runSuiteQL({
+                                query: sql
+                        });
+                        var resultadoParcelas = queryParcelas.asMappedResults();
+                        log.debug({title: 'Parcela', details: resultadoParcelas});
+                        if (resultadoParcelas.length > 0){
+                                for (var i = 0; i < resultadoParcelas.length; i++){
+                                        var parcel = resultadoParcelas[i];
+                                        log.debug({title: 'Parcela', details: parcel});
+                                        log.debug({title: 'Tipo Parcela', details: parcel['tpparc']});
+                                        log.debug({title: 'Lista Tipos Parcela', details: serieArray});
+                                        var tipoParcela = serieArray.filter(word => word.codigoSerie == parcel['tpparc']);
+                                        var parcela = {
+                                                codigo: parcel['codigo'],
+                                                numeroSerie: parcel['numeroserie'],
+                                                numeroParcela: parcel['numeroparcela'],
+                                                tipoParcela: tipoParcela[0].tipoParcela,
+                                                data: parcel['data'],
+                                                dataPagamento: parcel['datapagamento'],
+                                                valorParcela: parcel['valorparcela'],
+                                                valorPago: parcel['valorpago'],
+                                                valorEmAberto: parcel['valoremaberto'],
+                                                valorParcelaPrincipal: parcel['valorparcelaprincipal'],
+                                                valorDesconto: parcel['valordesconto'],
+                                                juros: parcel['juros'],
+                                                multa: parcel['multa'],
+                                                mora: parcel['mora'],
+                                                prorata: parcel['prorata'],
+                                                igpm: parcel['igpm'],
+                                                incc: parcel['incc'],
+                                                tipoJuros: parcel['tipojuros'],
+                                                status: parcel['status'],
+                                                valorAtualizado: parcel['valoratualizado'],
+                                                codigoParcelaExterno: parcel['codigoparcelaexterno'],
+                                                codigoContrato: parcel['codigocontrato'],
+                                                codigoContratoExterno: parcel['codigocontratoexterno'],
+                                                codigoClientePrincipal: parcel['codigoclienteprincipal'],
+                                                codigoClienteExterno: parcel['codigoclienteexterno'],
+                                                codigoUnidadeExterno: parcel['codigounidadeexterno'],
+                                                dataEmissaoBoleto: parcel['dataemissaoboleto'],
+                                                dataVencimento: parcel['datavencimento']
+                                        }
+                                        parcelas.push(parcela);
+                                }
+                        }
 
                         var queryCliente = query.runSuiteQL({
                                 query:'select b.altname nome, custentity_enl_cnpjcpf cpF_CNPJ, b.email email, custentity_lrc_data_nascimento dataNascimento, d.zip cep, d.addr1 endereco, \n' +
@@ -143,6 +173,7 @@ define(['N/search', 'N/record', './rsc_junix_call_api.js', 'N/query'],
                                     'where custrecord_rsc_fat_contrato = ?'
                         , params: [resultado['id']]});
                         var results = queryCliente.asMappedResults();
+                        var compradores = [];
                         if (results.length > 0){
                                 for (var i = 0; i< results.length; i++) {
                                         var cliente = results[i];
@@ -210,13 +241,14 @@ define(['N/search', 'N/record', './rsc_junix_call_api.js', 'N/query'],
                                                 //fgts: fgts,
                                                 //informacoesBancarias: informacoesBancarias
                                         }
+                                        compradores.push(comprador);
 
                                 }
                         }
 
 
-                        var compradores = [];
-                        compradores.push(comprador);
+
+
 
                         var objInvoice = {
                                 CodigoEmpreendimento: resultado['custentity_rsc_codigo_junix_obra'],

@@ -5,24 +5,25 @@
   <notifyadmins>F</notifyadmins>
   <notifyemails></notifyemails>
   <notifyowner>T</notifyowner>
-  <scriptfile>[/SuiteScripts/JunixCadastro/rsc_junix_createfeedprop_mr.js]</scriptfile>
+  <scriptfile>[/SuiteScripts/Junix/rsc_junix_createfeedprop_mr.js]</scriptfile>
   <scriptdeployments>
     <scriptdeployment scriptid="customdeploy_rsc_junix_createfeedprop_mr">
       <buffersize>1</buffersize>
-      <concurrencylimit>1</concurrencylimit>
+      <concurrencylimit>5</concurrencylimit>
       <isdeployed>T</isdeployed>
       <loglevel>DEBUG</loglevel>
       <queueallstagesatonce>T</queueallstagesatonce>
       <runasrole>ADMINISTRATOR</runasrole>
-      <status>NOTSCHEDULED</status>
+      <status>SCHEDULED</status>
       <title>RSC - JUNIX Create Feed Proposta</title>
       <yieldaftermins>60</yieldaftermins>
       <recurrence>
-        <single>
-          <repeat></repeat>
+        <daily>
+          <everyxdays>1</everyxdays>
+          <repeat>PT15M</repeat>
           <startdate>2021-07-23</startdate>
-          <starttime>21:00:00Z</starttime>
-        </single>
+          <starttime>03:00:00Z</starttime>
+        </daily>
       </recurrence>
     </scriptdeployment>
   </scriptdeployments>

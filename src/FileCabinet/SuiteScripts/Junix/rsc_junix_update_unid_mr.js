@@ -152,6 +152,6 @@ define(['N/search', 'N/runtime', 'N/record', './rsc_junix_call_api.js'],
             }
         }
 
-        return {getInputData, map, reduce, summarize}
+        return {getInputData, map}
 
     });

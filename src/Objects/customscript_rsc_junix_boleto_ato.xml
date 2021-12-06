@@ -1,0 +1,18 @@
+<restlet scriptid="customscript_rsc_junix_boleto_ato">
+    <isinactive></isinactive>
+    <name>RSC - Junix  Create Boleto</name>
+    <notifyowner>T</notifyowner>
+    <scriptfile>[/SuiteScripts/Junix/rsc_junix_boleto_ato.js]</scriptfile>
+    <scriptdeployments>
+        <scriptdeployment scriptid="customdeploy_rsc_junix_boleto_ato">
+            <allemployees>F</allemployees>
+            <allpartners>F</allpartners>
+            <allroles>F</allroles>
+            <audslctrole></audslctrole>
+            <isdeployed>T</isdeployed>
+            <loglevel>DEBUG</loglevel>
+            <status>TESTING</status>
+            <title>RSC - Junix  Create Boleto</title>
+        </scriptdeployment>
+    </scriptdeployments>
+</restlet>
